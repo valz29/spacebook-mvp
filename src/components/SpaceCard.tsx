@@ -8,8 +8,8 @@ interface SpaceCardProps {
   title: string;
   location: string;
   price: number;
-  rating: number;
-  reviews: number;
+  rating?: number;
+  reviews?: number;
   image: string;
   type: string;
   capacity: number;
@@ -50,14 +50,16 @@ export const SpaceCard = ({
         
         <div className="p-4">
           <div className="flex items-start justify-between gap-2 mb-2">
-            <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors line-clamp-1">
+            <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors line-clamp-2">
               {title}
             </h3>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <Star className="h-4 w-4 fill-primary text-primary" />
-              <span className="text-sm font-medium">{rating}</span>
-              <span className="text-sm text-muted-foreground">({reviews})</span>
-            </div>
+            {rating && reviews ? (
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <Star className="h-4 w-4 fill-primary text-primary" />
+                <span className="text-sm font-medium">{rating}</span>
+                <span className="text-sm text-muted-foreground">({reviews})</span>
+              </div>
+            ) : null}
           </div>
           
           <div className="flex items-center gap-1 text-muted-foreground mb-3">
