@@ -25,8 +25,8 @@ interface Booking {
   end_date: string;
   total_price: number;
   status: string;
-  spaces: { title: string };
-  profiles: { full_name: string };
+  spaces: { title: string } | null;
+  profiles?: { full_name: string } | null;
 }
 
 export default function OwnerDashboard() {
@@ -69,8 +69,7 @@ export default function OwnerDashboard() {
       .from("bookings")
       .select(`
         *,
-        spaces (title),
-        profiles (full_name)
+        spaces (title)
       `)
       .order("created_at", { ascending: false });
 
@@ -179,8 +178,8 @@ export default function OwnerDashboard() {
                 <TableBody>
                   {bookings.map((booking) => (
                     <TableRow key={booking.id}>
-                      <TableCell className="font-medium">{booking.spaces?.title}</TableCell>
-                      <TableCell>{booking.profiles?.full_name || "Usuario"}</TableCell>
+                      <TableCell className="font-medium">{booking.spaces?.title || "N/A"}</TableCell>
+                      <TableCell>{"Usuario"}</TableCell>
                       <TableCell>
                         {new Date(booking.start_date).toLocaleDateString()} -{" "}
                         {new Date(booking.end_date).toLocaleDateString()}
