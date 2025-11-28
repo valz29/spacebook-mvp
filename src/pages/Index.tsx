@@ -1,79 +1,29 @@
+import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { SearchBar } from "@/components/SearchBar";
 import { SpaceCard } from "@/components/SpaceCard";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Building2, Shield, Clock, TrendingUp } from "lucide-react";
+import { ArrowRight, Building2, Shield, Clock, TrendingUp, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
-// Mock data - en producción vendría de una API
-const featuredSpaces = [
-  {
-    id: "1",
-    title: "Estudio Fotográfico Moderno",
-    location: "Ciudad de México, CDMX",
-    price: 450,
-    rating: 4.9,
-    reviews: 87,
-    image: "https://images.unsplash.com/photo-1556912172-45b7abe8b7e1?w=800&h=600&fit=crop",
-    type: "Estudio",
-    capacity: 15,
-  },
-  {
-    id: "2",
-    title: "Sala de Juntas Ejecutiva",
-    location: "Monterrey, NL",
-    price: 320,
-    rating: 4.8,
-    reviews: 64,
-    image: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=600&fit=crop",
-    type: "Oficina",
-    capacity: 20,
-  },
-  {
-    id: "3",
-    title: "Espacio para Eventos Privados",
-    location: "Guadalajara, JAL",
-    price: 680,
-    rating: 5.0,
-    reviews: 112,
-    image: "https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&h=600&fit=crop",
-    type: "Eventos",
-    capacity: 50,
-  },
-  {
-    id: "4",
-    title: "Coworking Creativo",
-    location: "Puebla, PUE",
-    price: 180,
-    rating: 4.7,
-    reviews: 43,
-    image: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=800&h=600&fit=crop",
-    type: "Coworking",
-    capacity: 12,
-  },
-  {
-    id: "5",
-    title: "Salón de Clases Digital",
-    location: "Querétaro, QRO",
-    price: 280,
-    rating: 4.8,
-    reviews: 56,
-    image: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&h=600&fit=crop",
-    type: "Educación",
-    capacity: 30,
-  },
-  {
-    id: "6",
-    title: "Terraza con Vista Panorámica",
-    location: "Cancún, QROO",
-    price: 890,
-    rating: 5.0,
-    reviews: 98,
-    image: "https://images.unsplash.com/photo-1519167758481-83f29da8c68e?w=800&h=600&fit=crop",
-    type: "Eventos",
-    capacity: 80,
-  },
-];
+interface Space {
+  id: string;
+  title: string;
+  location: string;
+  price_per_hour: number;
+  image_url: string;
+  space_type: string;
+  capacity: number;
+}
+
+interface SearchFilters {
+  location: string;
+  capacity: string;
+  priceMax: string;
+  spaceType: string;
+}
 
 const features = [
   {
@@ -99,6 +49,74 @@ const features = [
 ];
 
 const Index = () => {
+  const [spaces, setSpaces] = useState<Space[]>([]);
+  const [filteredSpaces, setFilteredSpaces] = useState<Space[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState<SearchFilters>({
+    location: "",
+    capacity: "",
+    priceMax: "",
+    spaceType: "",
+  });
+
+  useEffect(() => {
+    fetchSpaces();
+  }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [filters, spaces]);
+
+  const fetchSpaces = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("spaces")
+        .select("*")
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      setSpaces(data || []);
+      setFilteredSpaces(data || []);
+    } catch (error) {
+      toast.error("Error al cargar los espacios");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const applyFilters = () => {
+    let filtered = [...spaces];
+
+    if (filters.location) {
+      filtered = filtered.filter((space) =>
+        space.location.toLowerCase().includes(filters.location.toLowerCase())
+      );
+    }
+
+    if (filters.capacity) {
+      const capacityNum = parseInt(filters.capacity);
+      filtered = filtered.filter((space) => space.capacity >= capacityNum);
+    }
+
+    if (filters.priceMax) {
+      const priceNum = parseFloat(filters.priceMax);
+      filtered = filtered.filter((space) => space.price_per_hour <= priceNum);
+    }
+
+    if (filters.spaceType) {
+      filtered = filtered.filter((space) => space.space_type === filters.spaceType);
+    }
+
+    setFilteredSpaces(filtered);
+  };
+
+  const handleSearch = (newFilters: SearchFilters) => {
+    setFilters(newFilters);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -118,8 +136,16 @@ const Index = () => {
           </div>
           
           <div className="animate-slide-up" style={{ animationDelay: "0.2s" }}>
-            <SearchBar />
+            <SearchBar onSearch={handleSearch} />
           </div>
+          
+          {filters.location || filters.capacity || filters.priceMax || filters.spaceType ? (
+            <div className="mt-6 text-center">
+              <p className="text-muted-foreground">
+                {filteredSpaces.length} {filteredSpaces.length === 1 ? "espacio encontrado" : "espacios encontrados"}
+              </p>
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -143,40 +169,80 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Featured Spaces Section */}
+      {/* Spaces Section */}
       <section className="py-16 md:py-24">
         <div className="container">
           <div className="flex items-center justify-between mb-12">
             <div>
               <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
-                Espacios Destacados
+                {filters.location || filters.capacity || filters.priceMax || filters.spaceType
+                  ? "Resultados de Búsqueda"
+                  : "Espacios Disponibles"}
               </h2>
               <p className="text-muted-foreground">
-                Los espacios más populares y mejor valorados
+                {filters.location || filters.capacity || filters.priceMax || filters.spaceType
+                  ? "Espacios que coinciden con tu búsqueda"
+                  : "Explora nuestra selección de espacios únicos"}
               </p>
             </div>
-            <Button variant="outline" asChild className="hidden md:flex">
-              <Link to="/explore">
-                Ver Todos
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredSpaces.map((space) => (
-              <SpaceCard key={space.id} {...space} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="flex justify-center items-center py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : filteredSpaces.length === 0 ? (
+            <div className="text-center py-20">
+              <Building2 className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
+              <h3 className="text-xl font-semibold text-foreground mb-2">
+                No se encontraron espacios
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                {filters.location || filters.capacity || filters.priceMax || filters.spaceType
+                  ? "Intenta ajustar los filtros de búsqueda"
+                  : "Aún no hay espacios disponibles. ¡Sé el primero en publicar!"}
+              </p>
+              {filters.location || filters.capacity || filters.priceMax || filters.spaceType ? (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    setFilters({ location: "", capacity: "", priceMax: "", spaceType: "" })
+                  }
+                >
+                  Limpiar Filtros
+                </Button>
+              ) : (
+                <Button asChild>
+                  <Link to="/list-space">Publicar Espacio</Link>
+                </Button>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredSpaces.map((space) => (
+                  <SpaceCard
+                    key={space.id}
+                    id={space.id}
+                    title={space.title}
+                    location={space.location}
+                    price={space.price_per_hour}
+                    image={space.image_url}
+                    type={space.space_type}
+                    capacity={space.capacity}
+                  />
+                ))}
+              </div>
 
-          <div className="mt-8 text-center md:hidden">
-            <Button variant="outline" asChild>
-              <Link to="/explore">
-                Ver Todos los Espacios
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
+              {filteredSpaces.length < spaces.length && (
+                <div className="mt-8 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Mostrando {filteredSpaces.length} de {spaces.length} espacios disponibles
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </section>
 
